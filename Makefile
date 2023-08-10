@@ -1,5 +1,5 @@
 all:
-	ninja -C build
+	ninja -v -j1 -C build
 
 install:
 	DESTDIR=$(DESTDIR) ninja -C build install

@@ -2733,7 +2733,8 @@ subdir('tmpfiles.d')
 subdir('presets')
 subdir('hwdb')
 subdir('network')
-subdir('man')
+# no manual export
+#subdir('man')
 subdir('shell-completion/bash')
 subdir('shell-completion/zsh')
 subdir('doc/sysvinit')
@@ -2875,10 +2876,16 @@ endif
 ############################################################
 
 meson_check_api_docs_sh = find_program('tools/meson-check-api-docs.sh')
+#run_target(
+#        'check-api-docs',
+#        depends : [man, libsystemd, libudev],
+#        command : [meson_check_api_docs_sh, libsystemd.full_path(), libudev.full_path()])
+
 run_target(
         'check-api-docs',
-        depends : [man, libsystemd, libudev],
+        depends : [libsystemd, libudev],
         command : [meson_check_api_docs_sh, libsystemd.full_path(), libudev.full_path()])
+
 
 ############################################################
 
@@ -3026,9 +3033,9 @@ foreach tuple : [
         ['nss-systemd'],
         ['hwdb'],
         ['tpm'],
-        ['man pages',        want_man],
-        ['html pages',       want_html],
-        ['man page indices', want_man and have_lxml],
+        #['man pages',        want_man],
+        #['html pages',       want_html],
+        #['man page indices', want_man and have_lxml],
         ['SysV compat'],
         ['utmp'],
         ['ldconfig'],
