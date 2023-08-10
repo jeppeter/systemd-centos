@@ -800,9 +800,8 @@ MANPAGES += \
 	man/sd_event_add_time.3 \
 	man/sd_event_get_fd.3 \
 	man/sd_event_new.3 \
-	man/sd_event_set_name.3 \
-	man/systemd-bus-proxyd.8 \
-	man/systemd-bus-proxyd@.service.8
+	man/sd_event_set_name.3 
+
 MANPAGES_ALIAS += \
 	man/sd_bus_creds_get_audit_login_uid.3 \
 	man/sd_bus_creds_get_audit_session_id.3 \
@@ -870,8 +869,8 @@ MANPAGES_ALIAS += \
 	man/sd_event_source_get_time_clock.3 \
 	man/sd_event_source_set_time.3 \
 	man/sd_event_source_set_time_accuracy.3 \
-	man/sd_event_unref.3 \
-	man/systemd-bus-proxyd.socket.8
+	man/sd_event_unref.3
+
 man/sd_bus_creds_get_audit_login_uid.3: man/sd_bus_creds_get_pid.3
 man/sd_bus_creds_get_audit_session_id.3: man/sd_bus_creds_get_pid.3
 man/sd_bus_creds_get_cgroup.3: man/sd_bus_creds_get_pid.3
@@ -939,7 +938,6 @@ man/sd_event_source_get_time_clock.3: man/sd_event_add_time.3
 man/sd_event_source_set_time.3: man/sd_event_add_time.3
 man/sd_event_source_set_time_accuracy.3: man/sd_event_add_time.3
 man/sd_event_unref.3: man/sd_event_new.3
-man/systemd-bus-proxyd.socket.8: man/systemd-bus-proxyd@.service.8
 man/sd_bus_creds_get_audit_login_uid.html: man/sd_bus_creds_get_pid.html
 	$(html-alias)
 
@@ -1141,8 +1139,6 @@ man/sd_event_source_set_time_accuracy.html: man/sd_event_add_time.html
 man/sd_event_unref.html: man/sd_event_new.html
 	$(html-alias)
 
-man/systemd-bus-proxyd.socket.html: man/systemd-bus-proxyd@.service.html
-	$(html-alias)
 
 endif
 
