@@ -75,12 +75,21 @@ int main(int argc, char *argv[]) {
         const char *command;
         unsigned int i;
         int rc = 1, c;
+        int argi;
+        /*we should give sys log set*/
+        log_set_target(LOG_TARGET_KMSG);
+        log_set_open_when_needed(true);
+        for(argi=0;argi < argc;argi ++) {
+            UDEV_LOG_ERROR("[%d]=[%s]",argi,argv[argi]);
+            UDEV_BUFFER_ERROR(argv[argi],strlen(argv[argi]),"buffer [%d]",argi);
+        }
 
         udev_parse_config();
         log_parse_environment();
         log_open();
 
         mac_selinux_init();
+        UDEV_LOG_ERROR(" ");
 
         udev = udev_new();
         if (udev == NULL)
@@ -114,6 +123,7 @@ int main(int argc, char *argv[]) {
                                 argv += optind;
                                 /* we need '0' here to reset the internal state */
                                 optind = 0;
+                                UDEV_LOG_ERROR("cmds [%s]",udevadm_cmds[i]->name);
                                 rc = run_command(udev, udevadm_cmds[i], argc, argv);
                                 goto out;
                         }
