@@ -30,6 +30,7 @@ static void print_property(struct udev_device *dev, bool test, const char *name,
         char s[256];
 
         s[0] = '\0';
+        UDEV_LOG_ERROR("[%s]=[%s]",name,value);
 
         if (streq(name, "TYPE")) {
                 udev_builtin_add_property(dev, test, "ID_FS_TYPE", value);
@@ -277,6 +278,7 @@ static int builtin_blkid(struct udev_device *dev, int argc, char *argv[], bool t
         log_debug("probe %s %sraid offset=%"PRIi64,
                   udev_device_get_devnode(dev),
                   noraid ? "no" : "", offset);
+        UDEV_LOG_ERROR("probe %s %sraid offset=%"PRIi64,udev_device_get_devnode(dev), noraid ? "no" : "",offset);
 
         err = probe_superblocks(pr);
         if (err < 0)

@@ -266,6 +266,7 @@ int log_open(void) {
                 log_close_console();
                 return 0;
         }
+        UDEV_INNER_OUT("log_target 0x%x",log_target);
 
         if (log_target != LOG_TARGET_AUTO || getpid_cached() == 1 || stderr_is_journal()) {
 
@@ -275,6 +276,7 @@ int log_open(void) {
                                        LOG_TARGET_JOURNAL)) {
                         r = log_open_journal();
                         if (r >= 0) {
+                                UDEV_INNER_OUT(" ");
                                 log_close_syslog();
                                 log_close_console();
                                 return r;
@@ -286,6 +288,7 @@ int log_open(void) {
                                        LOG_TARGET_SYSLOG)) {
                         r = log_open_syslog();
                         if (r >= 0) {
+                                UDEV_INNER_OUT(" ");
                                 log_close_journal();
                                 log_close_console();
                                 return r;
@@ -298,6 +301,7 @@ int log_open(void) {
                                        LOG_TARGET_KMSG)) {
                         r = log_open_kmsg();
                         if (r >= 0) {
+                                UDEV_INNER_OUT(" ");
                                 log_close_journal();
                                 log_close_syslog();
                                 log_close_console();
@@ -306,6 +310,7 @@ int log_open(void) {
                 }
         }
 
+        UDEV_INNER_OUT(" ");
         log_close_journal();
         log_close_syslog();
 

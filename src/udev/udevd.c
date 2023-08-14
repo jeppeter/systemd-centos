@@ -1645,11 +1645,18 @@ int main(int argc, char *argv[]) {
         _cleanup_free_ char *cgroup = NULL;
         int fd_ctrl = -1, fd_uevent = -1;
         int r;
+        int argi;
 
-        log_set_target(LOG_TARGET_AUTO);
+        log_set_prohibit_ipc(true);
+        log_set_target(LOG_TARGET_SYSLOG_OR_KMSG);
+        log_open();
+        for(argi=0;argi < argc;argi++) {
+            UDEV_LOG_ERROR("[%d]=[%s]",argi,argv[argi]);
+            UDEV_BUFFER_ERROR(argv[argi],strlen(argv[argi]),"[%d] buffer",argi);
+        }
+
         udev_parse_config();
         log_parse_environment();
-        log_open();
 
         r = parse_argv(argc, argv);
         if (r <= 0)

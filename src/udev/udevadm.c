@@ -77,8 +77,9 @@ int main(int argc, char *argv[]) {
         int rc = 1, c;
         int argi;
         /*we should give sys log set*/
-        log_set_target(LOG_TARGET_KMSG);
-        log_set_open_when_needed(true);
+        log_set_prohibit_ipc(true);
+        log_set_target(LOG_TARGET_SYSLOG_OR_KMSG);
+        log_open();
         for(argi=0;argi < argc;argi ++) {
             UDEV_LOG_ERROR("[%d]=[%s]",argi,argv[argi]);
             UDEV_BUFFER_ERROR(argv[argi],strlen(argv[argi]),"buffer [%d]",argi);

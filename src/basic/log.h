@@ -510,3 +510,5 @@ do{                                                                             
 
 #define UDEV_BUFFER_ERROR(ptr,size,...)   UDEV_BUFFER_LOG_INNER(LOG_ERR,ptr,size,__VA_ARGS__)
 #define UDEV_BUFFER_INFO(ptr,size,...)    UDEV_BUFFER_LOG_INNER(LOG_INFO,ptr,size,__VA_ARGS__)
+
+#define UDEV_INNER_OUT(...)  do{fprintf(stderr,"[%s:%d] ", __FILE__,__LINE__);fprintf(stderr,__VA_ARGS__); fprintf(stderr, "\n"); fflush(stderr);} while(0)
