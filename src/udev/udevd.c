@@ -1647,8 +1647,7 @@ int main(int argc, char *argv[]) {
         int r;
         int argi;
 
-        log_set_prohibit_ipc(true);
-        log_set_target(LOG_TARGET_SYSLOG_OR_KMSG);
+        log_set_target(LOG_TARGET_KMSG);
         log_open();
         for(argi=0;argi < argc;argi++) {
             UDEV_LOG_ERROR("[%d]=[%s]",argi,argv[argi]);
