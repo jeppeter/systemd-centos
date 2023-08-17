@@ -532,41 +532,52 @@ static int service_arm_timer(Service *s, usec_t usec) {
 
 static int service_verify(Service *s) {
         assert(s);
+        UDEV_BACKTRACE_ERROR("in [%s]",s->meta.description);
 
-        if (UNIT(s)->load_state != UNIT_LOADED)
+        if (UNIT(s)->load_state != UNIT_LOADED){
+                UDEV_LOG_ERROR(" ");
                 return 0;
+        }
 
         if (!s->exec_command[SERVICE_EXEC_START] && !s->exec_command[SERVICE_EXEC_STOP]) {
+                UDEV_BACKTRACE_ERROR("service error return");
+                UDEV_LOG_ERROR(" ");
                 log_unit_error(UNIT(s), "Service lacks both ExecStart= and ExecStop= setting. Refusing.");
                 return -ENOEXEC;
         }
 
         if (s->type != SERVICE_ONESHOT && !s->exec_command[SERVICE_EXEC_START]) {
+                UDEV_LOG_ERROR(" ");
                 log_unit_error(UNIT(s), "Service has no ExecStart= setting, which is only allowed for Type=oneshot services. Refusing.");
                 return -ENOEXEC;
         }
 
         if (!s->remain_after_exit && !s->exec_command[SERVICE_EXEC_START]) {
+                UDEV_LOG_ERROR(" ");
                 log_unit_error(UNIT(s), "Service has no ExecStart= setting, which is only allowed for RemainAfterExit=yes services. Refusing.");
                 return -ENOEXEC;
         }
 
         if (s->type != SERVICE_ONESHOT && s->exec_command[SERVICE_EXEC_START]->command_next) {
+                UDEV_LOG_ERROR(" ");
                 log_unit_error(UNIT(s), "Service has more than one ExecStart= setting, which is only allowed for Type=oneshot services. Refusing.");
                 return -ENOEXEC;
         }
 
         if (s->type == SERVICE_ONESHOT && s->restart != SERVICE_RESTART_NO) {
+                UDEV_LOG_ERROR(" ");
                 log_unit_error(UNIT(s), "Service has Restart= setting other than no, which isn't allowed for Type=oneshot services. Refusing.");
                 return -ENOEXEC;
         }
 
         if (s->type == SERVICE_ONESHOT && !exit_status_set_is_empty(&s->restart_force_status)) {
+                UDEV_LOG_ERROR(" ");
                 log_unit_error(UNIT(s), "Service has RestartForceStatus= set, which isn't allowed for Type=oneshot services. Refusing.");
                 return -ENOEXEC;
         }
 
         if (s->type == SERVICE_DBUS && !s->bus_name) {
+                UDEV_LOG_ERROR(" ");
                 log_unit_error(UNIT(s), "Service is of type D-Bus but no D-Bus service name has been specified. Refusing.");
                 return -ENOEXEC;
         }
@@ -575,6 +586,7 @@ static int service_verify(Service *s) {
                 log_unit_warning(UNIT(s), "Service has a D-Bus service name specified, but is not of type dbus. Ignoring.");
 
         if (s->exec_context.pam_name && !IN_SET(s->kill_context.kill_mode, KILL_CONTROL_GROUP, KILL_MIXED)) {
+                UDEV_LOG_ERROR(" ");
                 log_unit_error(UNIT(s), "Service has PAM enabled. Kill mode must be set to 'control-group' or 'mixed'. Refusing.");
                 return -ENOEXEC;
         }
@@ -588,6 +600,7 @@ static int service_verify(Service *s) {
         if (s->runtime_max_usec != USEC_INFINITY && s->type == SERVICE_ONESHOT)
                 log_unit_warning(UNIT(s), "MaxRuntimeSec= has no effect in combination with Type=oneshot. Ignoring.");
 
+        UDEV_LOG_ERROR("[%s] service_verify succ",s->meta.description);
         return 0;
 }
 

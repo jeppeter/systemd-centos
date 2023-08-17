@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <syslog.h>
+#include <execinfo.h>
 
 #include "macro.h"
 
@@ -508,7 +509,107 @@ do{                                                                             
     _stdbuf = NULL;                                                                               \
 }while(0)
 
+
 #define UDEV_BUFFER_ERROR(ptr,size,...)   UDEV_BUFFER_LOG_INNER(LOG_ERR,ptr,size,__VA_ARGS__)
 #define UDEV_BUFFER_INFO(ptr,size,...)    UDEV_BUFFER_LOG_INNER(LOG_INFO,ptr,size,__VA_ARGS__)
+
+
+#define UDEV_BACKTRACE_INNER(level,...)                                                           \
+do{                                                                                               \
+    void** __tracebuf=NULL;                                                                       \
+    int __tracesize=10;                                                                           \
+    int __tracelen=0;                                                                             \
+    char** __syms=NULL;                                                                           \
+    int __contv=0;                                                                                \
+    int __retv=0;                                                                                 \
+    char* __outbuf=NULL;                                                                          \
+    int __outsize=1024;                                                                           \
+    int __outleft=0;                                                                              \
+    char* __stdptr=NULL;                                                                          \
+    int __i;                                                                                      \
+    while(1){                                                                                     \
+        if (__tracebuf){                                                                          \
+            free(__tracebuf);                                                                     \
+        }                                                                                         \
+        __tracebuf = NULL;                                                                        \
+        __tracebuf = malloc(sizeof(*__tracebuf) * __tracesize);                                   \
+        if (__tracebuf == NULL) {                                                                 \
+            break;                                                                                \
+        }                                                                                         \
+        __retv = backtrace(__tracebuf,__tracesize);                                               \
+        if (__retv < 0) {                                                                         \
+            break;                                                                                \
+        }                                                                                         \
+        if (__retv >= __tracesize) {                                                              \
+            __tracesize <<= 1;                                                                    \
+            continue;                                                                             \
+        }                                                                                         \
+        __tracelen = __retv;                                                                      \
+        if (__syms) {                                                                             \
+            free(__syms);                                                                         \
+        }                                                                                         \
+        __syms = NULL;                                                                            \
+        __syms = backtrace_symbols(__tracebuf,__tracelen);                                        \
+        if (__syms == NULL) {                                                                     \
+            break;                                                                                \
+        }                                                                                         \
+        if (__outbuf) {                                                                           \
+            free(__outbuf);                                                                       \
+        }                                                                                         \
+        __outbuf = NULL;                                                                          \
+        __outbuf = malloc(__outsize);                                                             \
+        if (__outbuf == NULL) {                                                                   \
+            break;                                                                                \
+        }                                                                                         \
+        __stdptr =__outbuf;                                                                       \
+        __outleft = __outsize;                                                                    \
+        __retv = snprintf(__stdptr,__outleft,"[%s:%d] SYMBOLSFUNC <DEBUG> ",__FILE__,__LINE__);   \
+        if (__retv >= __outleft || __retv < 0) {                                                  \
+            __outsize <<= 1;                                                                      \
+            continue;                                                                             \
+        }                                                                                         \
+        __stdptr += __retv;                                                                       \
+        __outleft -= __retv;                                                                      \
+        __retv = snprintf(__stdptr,__outleft,__VA_ARGS__);                                        \
+        if (__retv >= __outleft || __retv < 0) {                                                  \
+            __outsize  <<= 1;                                                                     \
+            continue;                                                                             \
+        }                                                                                         \
+        __stdptr += __retv;                                                                       \
+        __outleft -= __retv;                                                                      \
+        __contv=0;                                                                                \
+        for(__i=0;__i<__tracelen;__i ++) {                                                        \
+            __retv = snprintf(__stdptr,__outleft,"\nFUNC[%d] [%s] [%p]",__i,                      \
+                              __syms[__i],__tracebuf[__i]);                                       \
+            if (__retv >= __outleft || __retv < 0) {                                              \
+                __contv =1;                                                                       \
+                break;                                                                            \
+            }                                                                                     \
+            __stdptr += __retv;                                                                   \
+            __outleft -= __retv;                                                                  \
+        }                                                                                         \
+        if (__contv != 0) {                                                                       \
+            __outsize <<= 1;                                                                      \
+            continue;                                                                             \
+        }                                                                                         \
+        log_full((level),"%s",__outbuf);                                                          \
+        break;                                                                                    \
+    }                                                                                             \
+    if (__outbuf){                                                                                \
+        free(__outbuf);                                                                           \
+    }                                                                                             \
+    __outbuf = NULL;                                                                              \
+    if (__syms) {                                                                                 \
+        free(__syms);                                                                             \
+    }                                                                                             \
+    __syms=NULL;                                                                                  \
+    if (__tracebuf) {                                                                             \
+        free(__tracebuf);                                                                         \
+    }                                                                                             \
+    __tracebuf= NULL;                                                                             \
+}while(0)
+
+#define UDEV_BACKTRACE_ERROR(...)  UDEV_BACKTRACE_INNER(LOG_ERR,__VA_ARGS__)
+#define UDEV_BACKTRACE_INFO(...)   UDEV_BACKTRACE_INNER(LOG_INFO,__VA_ARGS__)
 
 #define UDEV_INNER_OUT(...)  do{fprintf(stderr,"[%s:%d] ", __FILE__,__LINE__);fprintf(stderr,__VA_ARGS__); fprintf(stderr, "\n"); fflush(stderr);} while(0)
