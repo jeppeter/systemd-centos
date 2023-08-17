@@ -2422,7 +2422,7 @@ int main(int argc, char *argv[]) {
                          * shouldn't attempt opening that before we parsed /proc/cmdline which might redirect output
                          * elsewhere. */
                         log_set_target(LOG_TARGET_JOURNAL_OR_KMSG);
-
+                        
                 } else {
                         /* Running inside a container, as PID 1 */
                         log_set_target(LOG_TARGET_CONSOLE);
