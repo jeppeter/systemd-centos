@@ -1649,6 +1649,9 @@ int main(int argc, char *argv[]) {
         log_set_target(LOG_TARGET_AUTO);
         udev_parse_config();
         log_parse_environment();
+        log_set_max_level_realm(LOG_REALM_SYSTEMD,LOG_DEBUG);
+        log_set_max_level_realm(LOG_REALM_UDEV,LOG_DEBUG);
+        log_set_target(LOG_TARGET_JOURNAL_OR_KMSG);
         log_open();
 
         r = parse_argv(argc, argv);
