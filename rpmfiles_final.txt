@@ -93,3 +93,6 @@
 /usr/bin/timedatectl
 /usr/bin/udevadm
 /usr/lib/udev/v4l_id
+usr/lib/systemd/system/systemd-poweroff.service
+/usr/lib/systemd/system/systemd-reboot.service
+/usr/lib/systemd/system/systemd-halt.service

@@ -281,6 +281,64 @@ def formatcp_handler(args,parser):
     sys.exit(0)
     return
 
+def add_exec_start(f):
+    try:
+        sarr = read_file_split(f)
+    except:
+        logging.error('%s'%(traceback.format_exc()))
+        return False
+    matchstart = -1
+    matchend = -1
+    startexpr = re.compile('^## EXECSTART',re.I)
+    endexpr = re.compile('^## EXECEND',re.I)
+    lineno = 0
+    for l in sarr:
+        lineno += 1
+        if matchstart > 0 and  matchend < 0:
+            if endexpr.match(l):
+                matchend = lineno
+        elif  matchstart < 0:
+            if startexpr.match(l):
+                matchstart = lineno
+
+    if matchstart > 0 and matchend < 0:
+        logging.error('%s not match '%(f))
+        return False
+    elif matchstart > 0 and matchend > 0:
+        nsarr = []
+        idx = 0
+        while idx < len(sarr):
+            if idx < matchstart or idx > matchend:
+                nsarr.append(sarr[idx])
+            idx += 1
+        sarr = nsarr
+    outs = ''
+    for l in sarr:
+        outs += '%s\n'%(l)
+
+    outs += '## EXECSTART\n'
+    outs += '[Service]\n'
+    outs += 'ExecStart=/usr/bin/true\n'
+    outs += '## EXECEND\n'
+    try:
+        write_file(outs,f)
+    except:
+        logging.error('%s'%(traceback.format_exc()))
+        return False
+    return True
+
+
+def addexecstart_handler(args,parser):
+    set_logging(args)
+    retval = True
+    for f in args.subnargs:
+        retv = add_exec_start(f)
+        if not retv:
+            logging.error('%s failed'%(f))
+            retval = False
+    sys.exit(0)
+    return
+
 
 def main():
     commandline='''
@@ -297,6 +355,9 @@ def main():
         },
         "formatcp<formatcp_handler>##srcfilelist dstfilelist to copy##" : {
             "$" : 2
+        },
+        "addexecstart<addexecstart_handler>##files ... to add files##" : {
+            "$" : "+"
         }
     }
     '''

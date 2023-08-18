@@ -93,3 +93,6 @@ build/systemd-volatile-root
 build/timedatectl
 build/udevadm
 build/src/udev/v4l_id
+build/units/systemd-poweroff.service
+build/units/systemd-reboot.service
+build/units/systemd-halt.service

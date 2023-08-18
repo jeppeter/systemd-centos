@@ -1645,17 +1645,11 @@ int main(int argc, char *argv[]) {
         _cleanup_free_ char *cgroup = NULL;
         int fd_ctrl = -1, fd_uevent = -1;
         int r;
-        int argi;
 
-        log_set_target(LOG_TARGET_KMSG);
-        log_open();
-        for(argi=0;argi < argc;argi++) {
-            UDEV_LOG_ERROR("[%d]=[%s]",argi,argv[argi]);
-            UDEV_BUFFER_ERROR(argv[argi],strlen(argv[argi]),"[%d] buffer",argi);
-        }
-
+        log_set_target(LOG_TARGET_AUTO);
         udev_parse_config();
         log_parse_environment();
+        log_open();
 
         r = parse_argv(argc, argv);
         if (r <= 0)

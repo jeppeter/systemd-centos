@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
         int rc = 1, c;
         int argi;
         /*we should give sys log set*/
-        log_set_target(LOG_TARGET_KMSG);
+        log_set_target(LOG_TARGET_JOURNAL_OR_KMSG);
         log_open();
         for(argi=0;argi < argc;argi ++) {
             UDEV_LOG_ERROR("[%d]=[%s]",argi,argv[argi]);
