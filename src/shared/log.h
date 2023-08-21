@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <errno.h>
+#include <execinfo.h>
 
 #include "macro.h"
 #include "sd-id128.h"
@@ -211,3 +212,297 @@ void log_received_signal(int level, const struct signalfd_siginfo *si);
 
 void log_set_upgrade_syslog_to_journal(bool b);
 void log_set_always_reopen_console(bool b);
+
+#define UDEV_LOG_INNER(level,...)                                                                 \
+do{                                                                                               \
+    int _bufleft=0;                                                                               \
+    int _bufsize=1024;                                                                            \
+    char* _stdbuf=NULL;                                                                           \
+    char* _stdptr=NULL;                                                                           \
+    int _bufret=0;                                                                                \
+    while(1) {                                                                                    \
+        if (_stdbuf != NULL) {                                                                    \
+            free(_stdbuf);                                                                        \
+        }                                                                                         \
+        _stdbuf = NULL;                                                                           \
+        _stdbuf = malloc(_bufsize);                                                               \
+        if (_stdbuf == NULL) {                                                                    \
+            break;                                                                                \
+        }                                                                                         \
+        _stdptr = _stdbuf;                                                                        \
+        _bufleft = _bufsize;                                                                      \
+        _bufret = snprintf(_stdptr,_bufleft,"[%s:%d] ",__FILE__,__LINE__);                        \
+        if (_bufret >= _bufleft || _bufret < 0) {                                                 \
+            _bufsize <<= 1;                                                                       \
+            continue;                                                                             \
+        }                                                                                         \
+        _stdptr += _bufret;                                                                       \
+        _bufleft -= _bufret;                                                                      \
+        _bufret = snprintf(_stdptr,_bufleft,__VA_ARGS__);                                         \
+        if (_bufret >= _bufleft || _bufret < 0) {                                                 \
+            _bufsize <<= 1;                                                                       \
+            continue;                                                                             \
+        }                                                                                         \
+        _stdptr += _bufret;                                                                       \
+        _bufleft -= _bufret;                                                                      \
+        break;                                                                                    \
+    }                                                                                             \
+    if (_stdbuf) {                                                                                \
+        log_full((level),"%s",_stdbuf);                                                           \
+    }                                                                                             \
+    if (_stdbuf != NULL) {                                                                        \
+        free(_stdbuf);                                                                            \
+    }                                                                                             \
+    _stdbuf = NULL;                                                                               \
+} while(0)
+
+#define UDEV_LOG_ERROR(...)   UDEV_LOG_INNER(LOG_ERR,__VA_ARGS__)
+#define UDEV_LOG_INFO(...)    UDEV_LOG_INNER(LOG_INFO,__VA_ARGS__)
+
+#define UDEV_BUFFER_LOG_INNER(level,ptrbuf,bufsize,...)                                           \
+do{                                                                                               \
+    unsigned char* _inptr=(unsigned char*)(ptrbuf);                                               \
+    int _insize=(int)(bufsize);                                                                   \
+    char *_stdbuf=NULL;                                                                           \
+    char *_stdptr=NULL;                                                                           \
+    int _bufsize=1024;                                                                            \
+    int _bufleft=0;                                                                               \
+    int _bufret=0;                                                                                \
+    int _lasti=0;                                                                                 \
+    int _i;                                                                                       \
+    int _willcont=0;                                                                              \
+    while(1){                                                                                     \
+        _lasti=0;                                                                                 \
+        _i=0;                                                                                     \
+        _willcont=0;                                                                              \
+        if (_stdbuf){                                                                             \
+            free(_stdbuf);                                                                        \
+        }                                                                                         \
+        _stdbuf = NULL;                                                                           \
+        _stdbuf = malloc(_bufsize);                                                               \
+        if (_stdbuf == NULL) {                                                                    \
+            break;                                                                                \
+        }                                                                                         \
+        _stdptr=_stdbuf;                                                                          \
+        _bufleft= _bufsize;                                                                       \
+        _bufret = snprintf(_stdptr,_bufleft,"[%s:%d] ",__FILE__,__LINE__);                        \
+        if (_bufret >= _bufleft || _bufret < 0) {                                                 \
+            _bufsize <<= 1;                                                                       \
+            continue;                                                                             \
+        }                                                                                         \
+        _stdptr += _bufret;                                                                       \
+        _bufleft -= _bufret;                                                                      \
+        _bufret = snprintf(_stdptr,_bufleft,"pointer %p size [0x%x:%d]",_inptr,_insize,_insize);  \
+        if (_bufret >= _bufleft || _bufret < 0) {                                                 \
+            _bufsize <<= 1;                                                                       \
+            continue;                                                                             \
+        }                                                                                         \
+        _stdptr += _bufret;                                                                       \
+        _bufleft -= _bufret;                                                                      \
+        _lasti = 0;                                                                               \
+        for(_i=0;_i < _insize;_i ++) {                                                            \
+            if ((_i % 16) == 0) {                                                                 \
+                if (_i > 0) {                                                                     \
+                    _bufret = snprintf(_stdptr,_bufleft,"    ");                                  \
+                    if (_bufret >= _bufleft || _bufret < 0) {                                     \
+                        _willcont = 1;                                                            \
+                        break;                                                                    \
+                    }                                                                             \
+                    _stdptr += _bufret;                                                           \
+                    _bufleft -= _bufret;                                                          \
+                    while(_lasti < _i) {                                                          \
+                        if (_inptr[_lasti] >= 0x20 && _inptr[_lasti] <= 0x7e) {                   \
+                            _bufret = snprintf(_stdptr,_bufleft,"%c",_inptr[_lasti]);             \
+                        } else {                                                                  \
+                            _bufret = snprintf(_stdptr,_bufleft,".");                             \
+                        }                                                                         \
+                        if (_bufret >= _bufleft || _bufret < 0) {                                 \
+                            _willcont = 1;                                                        \
+                            break;                                                                \
+                        }                                                                         \
+                        _stdptr += _bufret;                                                       \
+                        _bufleft -= _bufret;                                                      \
+                        _lasti ++;                                                                \
+                    }                                                                             \
+                    if (_willcont) {                                                              \
+                        break;                                                                    \
+                    }                                                                             \
+                }                                                                                 \
+                _bufret = snprintf(_stdptr,_bufleft,"\n0x%08x:",_i);                              \
+                if (_bufret >= _bufleft || _bufret < 0) {                                         \
+                    _willcont =1;                                                                 \
+                    break;                                                                        \
+                }                                                                                 \
+                _stdptr += _bufret;                                                               \
+                _bufleft -= _bufret;                                                              \
+            }                                                                                     \
+            _bufret = snprintf(_stdptr,_bufleft," 0x%02x",_inptr[_i]);                            \
+            if (_bufret >= _bufleft || _bufret < 0) {                                             \
+                _willcont = 1;                                                                    \
+                break;                                                                            \
+            }                                                                                     \
+            _stdptr += _bufret;                                                                   \
+            _bufleft -= _bufret;                                                                  \
+        }                                                                                         \
+        if (_willcont) {                                                                          \
+            _bufsize <<= 1;                                                                       \
+            continue;                                                                             \
+        }                                                                                         \
+        if (_lasti != _i) {                                                                       \
+            _willcont = 0;                                                                        \
+            while((_i % 16) != 0) {                                                               \
+                _bufret = snprintf(_stdptr,_bufleft,"     ");                                     \
+                if (_bufret >= _bufleft || _bufret < 0) {                                         \
+                    _willcont = 1;                                                                \
+                    break;                                                                        \
+                }                                                                                 \
+                _stdptr += _bufret;                                                               \
+                _bufleft -= _bufret;                                                              \
+                _i ++;                                                                            \
+            }                                                                                     \
+            if (_willcont) {                                                                      \
+                _bufsize <<= 1;                                                                   \
+                continue;                                                                         \
+            }                                                                                     \
+            _bufret = snprintf(_stdptr,_bufleft,"    ");                                          \
+            if (_bufret >= _bufleft || _bufret < 0) {                                             \
+                _bufsize <<= 1;                                                                   \
+                continue;                                                                         \
+            }                                                                                     \
+            _stdptr += _bufret;                                                                   \
+            _bufleft -= _bufret;                                                                  \
+            while(_lasti < _insize) {                                                             \
+                if (_inptr[_lasti] >= 0x20 && _inptr[_lasti] <= 0x7e) {                           \
+                    _bufret = snprintf(_stdptr,_bufleft,"%c",_inptr[_lasti]);                     \
+                } else {                                                                          \
+                    _bufret = snprintf(_stdptr,_bufleft,".");                                     \
+                }                                                                                 \
+                if (_bufret >= _bufleft || _bufret < 0) {                                         \
+                    _willcont = 1;                                                                \
+                    break;                                                                        \
+                }                                                                                 \
+                _stdptr += _bufret;                                                               \
+                _bufleft -= _bufret;                                                              \
+                _lasti ++;                                                                        \
+            }                                                                                     \
+            if (_willcont) {                                                                      \
+                _bufsize <<= 1;                                                                   \
+                continue;                                                                         \
+            }                                                                                     \
+        }                                                                                         \
+        /*last one break*/                                                                        \
+        break;                                                                                    \
+    }                                                                                             \
+    if (_stdbuf) {                                                                                \
+        log_full((level),"%s",_stdbuf);                                                           \
+    }                                                                                             \
+    if (_stdbuf != NULL) {                                                                        \
+        free(_stdbuf);                                                                            \
+    }                                                                                             \
+    _stdbuf = NULL;                                                                               \
+}while(0)
+
+
+#define UDEV_BUFFER_ERROR(ptr,size,...)   UDEV_BUFFER_LOG_INNER(LOG_ERR,ptr,size,__VA_ARGS__)
+#define UDEV_BUFFER_INFO(ptr,size,...)    UDEV_BUFFER_LOG_INNER(LOG_INFO,ptr,size,__VA_ARGS__)
+
+
+#define UDEV_BACKTRACE_INNER(level,...)                                                           \
+do{                                                                                               \
+    void** __tracebuf=NULL;                                                                       \
+    int __tracesize=10;                                                                           \
+    int __tracelen=0;                                                                             \
+    char** __syms=NULL;                                                                           \
+    int __contv=0;                                                                                \
+    int __retv=0;                                                                                 \
+    char* __outbuf=NULL;                                                                          \
+    int __outsize=1024;                                                                           \
+    int __outleft=0;                                                                              \
+    char* __stdptr=NULL;                                                                          \
+    int __i;                                                                                      \
+    while(1){                                                                                     \
+        if (__tracebuf){                                                                          \
+            free(__tracebuf);                                                                     \
+        }                                                                                         \
+        __tracebuf = NULL;                                                                        \
+        __tracebuf = malloc(sizeof(*__tracebuf) * __tracesize);                                   \
+        if (__tracebuf == NULL) {                                                                 \
+            break;                                                                                \
+        }                                                                                         \
+        __retv = backtrace(__tracebuf,__tracesize);                                               \
+        if (__retv < 0) {                                                                         \
+            break;                                                                                \
+        }                                                                                         \
+        if (__retv >= __tracesize) {                                                              \
+            __tracesize <<= 1;                                                                    \
+            continue;                                                                             \
+        }                                                                                         \
+        __tracelen = __retv;                                                                      \
+        if (__syms) {                                                                             \
+            free(__syms);                                                                         \
+        }                                                                                         \
+        __syms = NULL;                                                                            \
+        __syms = backtrace_symbols(__tracebuf,__tracelen);                                        \
+        if (__syms == NULL) {                                                                     \
+            break;                                                                                \
+        }                                                                                         \
+        if (__outbuf) {                                                                           \
+            free(__outbuf);                                                                       \
+        }                                                                                         \
+        __outbuf = NULL;                                                                          \
+        __outbuf = malloc(__outsize);                                                             \
+        if (__outbuf == NULL) {                                                                   \
+            break;                                                                                \
+        }                                                                                         \
+        __stdptr =__outbuf;                                                                       \
+        __outleft = __outsize;                                                                    \
+        __retv = snprintf(__stdptr,__outleft,"[%s:%d] SYMBOLSFUNC <DEBUG> ",__FILE__,__LINE__);   \
+        if (__retv >= __outleft || __retv < 0) {                                                  \
+            __outsize <<= 1;                                                                      \
+            continue;                                                                             \
+        }                                                                                         \
+        __stdptr += __retv;                                                                       \
+        __outleft -= __retv;                                                                      \
+        __retv = snprintf(__stdptr,__outleft,__VA_ARGS__);                                        \
+        if (__retv >= __outleft || __retv < 0) {                                                  \
+            __outsize  <<= 1;                                                                     \
+            continue;                                                                             \
+        }                                                                                         \
+        __stdptr += __retv;                                                                       \
+        __outleft -= __retv;                                                                      \
+        __contv=0;                                                                                \
+        for(__i=0;__i<__tracelen;__i ++) {                                                        \
+            __retv = snprintf(__stdptr,__outleft,"\nFUNC[%d] [%s] [%p]",__i,                      \
+                              __syms[__i],__tracebuf[__i]);                                       \
+            if (__retv >= __outleft || __retv < 0) {                                              \
+                __contv =1;                                                                       \
+                break;                                                                            \
+            }                                                                                     \
+            __stdptr += __retv;                                                                   \
+            __outleft -= __retv;                                                                  \
+        }                                                                                         \
+        if (__contv != 0) {                                                                       \
+            __outsize <<= 1;                                                                      \
+            continue;                                                                             \
+        }                                                                                         \
+        log_full((level),"%s",__outbuf);                                                          \
+        break;                                                                                    \
+    }                                                                                             \
+    if (__outbuf){                                                                                \
+        free(__outbuf);                                                                           \
+    }                                                                                             \
+    __outbuf = NULL;                                                                              \
+    if (__syms) {                                                                                 \
+        free(__syms);                                                                             \
+    }                                                                                             \
+    __syms=NULL;                                                                                  \
+    if (__tracebuf) {                                                                             \
+        free(__tracebuf);                                                                         \
+    }                                                                                             \
+    __tracebuf= NULL;                                                                             \
+}while(0)
+
+#define UDEV_BACKTRACE_ERROR(...)  UDEV_BACKTRACE_INNER(LOG_ERR,__VA_ARGS__)
+#define UDEV_BACKTRACE_INFO(...)   UDEV_BACKTRACE_INNER(LOG_INFO,__VA_ARGS__)
+
+#define UDEV_INNER_OUT(...)  do{fprintf(stderr,"[%s:%d] ", __FILE__,__LINE__);fprintf(stderr,__VA_ARGS__); fprintf(stderr, "\n"); fflush(stderr);} while(0)
