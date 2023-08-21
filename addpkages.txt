@@ -1,0 +1,8 @@
+libselinux-devel
+pam-devel
+audit-libs-devel
+kmod-devel
+pcre-devel
+libcap-ng-devel
+xz-devel
+zlib-devel
