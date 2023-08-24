@@ -38,6 +38,7 @@ static void print_property(struct udev_device *dev, bool test, const char *name,
         char s[256];
 
         s[0] = '\0';
+        UDEV_LOG_ERROR("[%s]=[%s]",name,value);
 
         if (streq(name, "TYPE")) {
                 udev_builtin_add_property(dev, test, "ID_FS_TYPE", value);
