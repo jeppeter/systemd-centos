@@ -52,6 +52,7 @@ static int console_fd = STDERR_FILENO;
 static int syslog_fd = -1;
 static int kmsg_fd = -1;
 static int journal_fd = -1;
+static int logfile_fd = -1;
 
 static bool syslog_is_stream = false;
 
@@ -99,6 +100,7 @@ static int log_open_console(void) {
         return 0;
 }
 
+
 static void log_close_kmsg(void) {
         kmsg_fd = safe_close(kmsg_fd);
 }
@@ -118,6 +120,10 @@ static int log_open_kmsg(void) {
 
 static void log_close_syslog(void) {
         syslog_fd = safe_close(syslog_fd);
+}
+
+static void log_close_logfile(void) {
+        logfile_fd = safe_close(logfile_fd);
 }
 
 static int create_log_socket(int type) {
@@ -264,6 +270,7 @@ int log_open(void) {
                 log_close_journal();
                 log_close_syslog();
                 log_close_console();
+                log_close_logfile();
                 return 0;
         }
         UDEV_INNER_OUT("log_target 0x%x",log_target);
@@ -356,6 +363,20 @@ void log_set_max_level_realm(LogRealm realm, int level) {
 void log_set_facility(int facility) {
         log_facility = facility;
 }
+
+int log_open_logfile(const char* logfile) {
+    /*first we close the logfile*/
+    int r = 0;
+    log_close_logfile();
+    logfile_fd = open(logfile,O_APPEND | O_RDWR | O_CREAT,S_IRWXU|S_IRWXG|S_IXOTH);
+    if (logfile_fd < 0) {
+        r = -errno;
+        fprintf(stderr,"open [%s] error[%d]",logfile,r);
+        log_close_logfile();
+    }
+    return r;
+}
+
 
 static int write_to_console(
                 int level,
@@ -475,6 +496,50 @@ static int write_to_syslog(
 
         return 1;
 }
+
+static int write_to_logfile(
+                int level,
+                int error,
+                const char *file,
+                int line,
+                const char *func,
+                const char *buffer) {
+
+        char header_priority[2 + DECIMAL_STR_MAX(int) + 1],
+             header_time[64],
+             header_pid[4 + DECIMAL_STR_MAX(pid_t) + 1];
+        struct iovec iovec[5] = {};
+        time_t t;
+        struct tm *tm;
+        ssize_t n;
+
+        if (logfile_fd < 0)
+                return 0;
+
+        xsprintf(header_priority, "<%i>", level);
+
+        t = (time_t) (now(CLOCK_REALTIME) / USEC_PER_SEC);
+        tm = localtime(&t);
+        if (!tm)
+                return -EINVAL;
+
+        if (strftime(header_time, sizeof(header_time), "%h %e %T ", tm) <= 0)
+                return -EINVAL;
+
+        xsprintf(header_pid, "["PID_FMT"]: ", getpid_cached());
+
+        iovec[0] = IOVEC_MAKE_STRING(header_priority);
+        iovec[1] = IOVEC_MAKE_STRING(header_time);
+        iovec[2] = IOVEC_MAKE_STRING(program_invocation_short_name);
+        iovec[3] = IOVEC_MAKE_STRING(header_pid);
+        iovec[4] = IOVEC_MAKE_STRING(buffer);
+
+        n = writev(logfile_fd, iovec,5);
+        if (n < 0)
+            return -errno;
+        return 1;
+}
+
 
 static int write_to_kmsg(
                 int level,
@@ -641,6 +706,11 @@ int log_dispatch_internal(
                         k = write_to_syslog(level, error, file, line, func, buffer);
                         if (k < 0 && k != -EAGAIN)
                                 log_close_syslog();
+                }
+
+                k = write_to_logfile(level, error, file, line, func, buffer);
+                if (k < 0 && k != -EAGAIN) {
+                    log_close_logfile();
                 }
 
                 if (k <= 0 &&

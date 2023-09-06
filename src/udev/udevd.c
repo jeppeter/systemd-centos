@@ -1389,7 +1389,12 @@ static int parse_proc_cmdline_item(const char *key, const char *value, void *dat
 
                 r = safe_atoi(value, &arg_exec_delay);
 
-        } else if (startswith(key, "udev."))
+        } else if (proc_cmdline_key_streq(key,"udev.logfile")) {
+            if (proc_cmdline_value_missing(key,value)) {
+                return 0;
+            }
+            r = log_open_logfile(value);            
+        }else if (startswith(key, "udev."))
                 log_warning("Unknown udev kernel command line option \"%s\"", key);
 
         if (r < 0)

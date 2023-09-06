@@ -302,6 +302,8 @@ int log_syntax_invalid_utf8_internal(
                 const char *func,
                 const char *rvalue);
 
+int log_open_logfile(const char* logfile);
+
 #define log_syntax(unit, level, config_file, config_line, error, ...)   \
         ({                                                              \
                 int _level = (level), _e = (error);                     \
