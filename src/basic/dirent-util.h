@@ -8,10 +8,13 @@
 #include "macro.h"
 #include "path-util.h"
 
+typedef int (*scandir_func_t)(void* arg,struct dirent* dent);
+
 int dirent_ensure_type(DIR *d, struct dirent *de);
 
 bool dirent_is_file(const struct dirent *de) _pure_;
 bool dirent_is_file_with_suffix(const struct dirent *de, const char *suffix) _pure_;
+int scandir_callback(const char* dname,scandir_func_t func,void* arg);
 
 struct dirent* readdir_no_dot(DIR *dirp);
 

@@ -69,3 +69,50 @@ struct dirent* readdir_no_dot(DIR *dirp) {
                 return d;
         }
 }
+
+#define GETERRNO(ret) do{ (ret) = -1; if(errno) {ret = -errno;}}while(0)
+#define SETERRNO(ret) do{ if(ret > 0) {errno = ret;} else {errno = -ret;} } while(0) 
+
+int scandir_callback(const char* dname,scandir_func_t func,void* arg)
+{
+    struct dirent **namelist=NULL;
+    int retlen = 0;
+    int ret;
+    int dircnt = 0;
+    int i;
+
+    ret = scandir(dname,&namelist,NULL,NULL);
+    if (ret <0) {
+        GETERRNO(ret);
+        goto fail;
+    }
+    dircnt = ret;
+    retlen = 0;
+    for(i=0;i<dircnt;i++) {
+        if (func!= NULL && strcmp(namelist[i]->d_name,".") != 0 && strcmp(namelist[i]->d_name,"..") != 0) {
+            ret = func(arg,namelist[i]);
+            if (ret == 0) {
+                break;
+            } else if (ret < 0) {
+                GETERRNO(ret);
+                goto fail;
+            }
+        }
+        retlen ++;
+    }
+
+    if (namelist) {
+        free(namelist);
+    }
+    namelist = NULL;
+
+    return retlen;
+fail:
+    if (namelist) {
+        free(namelist);
+    }
+    namelist = NULL;
+    SETERRNO(ret);
+    return ret;
+}
+
