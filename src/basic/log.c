@@ -367,13 +367,42 @@ void log_set_facility(int facility) {
 int log_open_logfile(const char* logfile) {
     /*first we close the logfile*/
     int r = 0;
+    char* realname = NULL;
+    int realsize = 16;
+    int ret;
     log_close_logfile();
-    logfile_fd = open(logfile,O_APPEND | O_RDWR | O_CREAT,S_IRWXU|S_IRWXG|S_IXOTH);
-    if (logfile_fd < 0) {
-        r = -errno;
-        fprintf(stderr,"open [%s] error[%d]",logfile,r);
-        log_close_logfile();
+    while(1) {
+        if (realname) {
+            free(realname);
+        }
+        realname = NULL;
+        realname = malloc(realsize);
+        if (realname == NULL) {
+            break;
+        }
+        ret = snprintf(realname,realsize,"%s.%d",logfile,getpid());
+        if (ret < 0 || ret >= realsize) {
+            realsize <<= 1;
+            continue;
+        }
+        break;
     }
+    if (realname != NULL) {
+        logfile_fd = open(realname,O_APPEND | O_RDWR | O_CREAT,S_IRWXU|S_IRWXG|S_IXOTH);
+        if (logfile_fd < 0) {
+            r = -errno;
+            log_close_logfile();
+            log_error("open [%s] error[%d]",realname,r);
+        }        
+    } else {
+        r = -ENOMEM;
+    }
+
+    if (realname) {
+        free(realname);
+    }
+    realname = NULL;
+    realsize = 0;
     return r;
 }
 
@@ -508,14 +537,13 @@ static int write_to_logfile(
         char header_priority[2 + DECIMAL_STR_MAX(int) + 1],
              header_time[64],
              header_pid[4 + DECIMAL_STR_MAX(pid_t) + 1];
-        struct iovec iovec[5] = {};
+        struct iovec iovec[6] = {};
         time_t t;
         struct tm *tm;
         ssize_t n;
 
         if (logfile_fd < 0)
-                return 0;
-
+            return 0;
         xsprintf(header_priority, "<%i>", level);
 
         t = (time_t) (now(CLOCK_REALTIME) / USEC_PER_SEC);
@@ -533,10 +561,13 @@ static int write_to_logfile(
         iovec[2] = IOVEC_MAKE_STRING(program_invocation_short_name);
         iovec[3] = IOVEC_MAKE_STRING(header_pid);
         iovec[4] = IOVEC_MAKE_STRING(buffer);
+        iovec[5] = IOVEC_MAKE_STRING("\n");
 
-        n = writev(logfile_fd, iovec,5);
+        n = writev(logfile_fd, iovec,6);
         if (n < 0)
             return -errno;
+        syncfs(logfile_fd);
+
         return 1;
 }
 
@@ -708,10 +739,6 @@ int log_dispatch_internal(
                                 log_close_syslog();
                 }
 
-                k = write_to_logfile(level, error, file, line, func, buffer);
-                if (k < 0 && k != -EAGAIN) {
-                    log_close_logfile();
-                }
 
                 if (k <= 0 &&
                     IN_SET(log_target, LOG_TARGET_AUTO,
@@ -731,6 +758,12 @@ int log_dispatch_internal(
 
                 if (k <= 0)
                         (void) write_to_console(level, error, file, line, func, buffer);
+
+                k = write_to_logfile(level, error, file, line, func, buffer);
+                if (k < 0 && k != -EAGAIN) {
+                    log_close_logfile();
+                }
+
 
                 buffer = e;
         } while (buffer);

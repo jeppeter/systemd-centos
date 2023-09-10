@@ -5,7 +5,8 @@
  * Copyright © 2009 Scott James Remnant <scott@netsplit.com>
  *
  */
-
+#define  _DEFAULT_SOURCE
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
@@ -1355,7 +1356,7 @@ static int parse_proc_cmdline_item(const char *key, const char *value, void *dat
 
         if (!value)
                 return 0;
-
+        UDEV_LOG_INFO("%s=%s",key,value);
         if (proc_cmdline_key_streq(key, "udev.log_priority")) {
 
                 if (proc_cmdline_value_missing(key, value))
@@ -1391,10 +1392,16 @@ static int parse_proc_cmdline_item(const char *key, const char *value, void *dat
                 r = safe_atoi(value, &arg_exec_delay);
 
         } else if (proc_cmdline_key_streq(key,"udev.logfile")) {
+            UDEV_LOG_INFO("parse missing %s",key);
             if (proc_cmdline_value_missing(key,value)) {
                 return 0;
             }
-            r = log_open_logfile(value);            
+            UDEV_LOG_INFO("log_open_logfile(%s)",value);
+            r = log_open_logfile(value);
+            if (r < 0) {
+                UDEV_LOG_ERROR("open file [%s] error[%d]",value,r);
+            }
+            UDEV_LOG_INFO("log_open_logfile(%s)=r[%d]",value,r);
         }else if (startswith(key, "udev."))
                 log_warning("Unknown udev kernel command line option \"%s\"", key);
 
@@ -1648,6 +1655,133 @@ exit:
 }
 
 
+#define GETERRNO(ret) do{ (ret) = -1; if(errno) {ret = -errno;}}while(0)
+#define SETERRNO(ret) do{ if(ret > 0) {errno = ret;} else {errno = -ret;} } while(0) 
+
+
+typedef struct _d_store {
+    char* m_dname;
+} d_store_t, *pd_store_t;
+
+
+void free_d_store(pd_store_t* ppdstore);
+pd_store_t alloc_d_store(char* dname);
+
+void free_d_store(pd_store_t* ppdstore)
+{
+    if (ppdstore && *ppdstore) {
+        pd_store_t pdstore=  *ppdstore;
+        if (pdstore->m_dname) {
+            free(pdstore->m_dname);
+        }
+        pdstore->m_dname =NULL;
+        free(*ppdstore);
+        *ppdstore= NULL;
+    }
+    return;
+}
+
+pd_store_t alloc_d_store(char* dname)
+{
+    pd_store_t pdstore = NULL;
+    int ret;
+    pdstore = (pd_store_t)malloc(sizeof(*pdstore));
+    if (pdstore == NULL) {
+        GETERRNO(ret);
+        goto fail;
+    }
+
+    memset(pdstore,0,sizeof(*pdstore));
+    pdstore->m_dname = strdup(dname);
+    if (pdstore->m_dname == NULL) {
+        GETERRNO(ret);
+        goto fail;
+    }
+    return pdstore;
+fail:
+    free_d_store(&pdstore);
+    SETERRNO(ret);
+    return NULL;
+}
+
+int scan_log_out_dir(void* arg, struct dirent* dent);
+
+int scan_log_out_dir(void* arg, struct dirent* dent)
+{
+    pd_store_t pdstore = (pd_store_t) arg;
+    char* curname = NULL;
+    int cursize=16;
+    pd_store_t nstore = NULL;
+    int ret;
+
+    UDEV_LOG_INFO("%s/%s",pdstore->m_dname,dent->d_name);
+    if (dent->d_type == DT_DIR) {
+        while(1) {
+            if (curname) {
+                free(curname);
+            }
+            curname = NULL;
+            curname = malloc(cursize);
+            if (curname == NULL) {
+                GETERRNO(ret);
+                goto fail;
+            }
+
+            ret = snprintf(curname,cursize,"%s/%s",pdstore->m_dname,dent->d_name);
+            if (ret < 0 || ret >= cursize) {
+                cursize <<= 1;
+                continue;
+            }
+            break;
+        }
+
+        nstore = alloc_d_store(curname);
+        if (nstore == NULL) {
+            GETERRNO(ret);
+            goto fail;
+        }
+        ret = scandir_callback(curname,scan_log_out_dir,nstore);
+        if (ret < 0) {
+            GETERRNO(ret);
+            goto fail;
+        }
+    }
+
+    if (curname != NULL) {
+        free(curname);
+    }
+    curname = NULL;
+    cursize = 0;
+
+    free_d_store(&nstore);
+    return 1;
+fail:
+    if (curname != NULL) {
+        free(curname);
+    }
+    curname = NULL;
+    cursize = 0;
+
+    free_d_store(&nstore);
+    SETERRNO(ret);
+    return ret;
+}
+
+void scan_dir_dev(void);
+
+void scan_dir_dev(void)
+{
+    pd_store_t pstore =NULL;
+
+    pstore = alloc_d_store((char*)"/dev");
+    if (pstore != NULL) {
+        scandir_callback("/dev",scan_log_out_dir,pstore);
+    }
+    free_d_store(&pstore);
+    return;
+}
+
+
 int main(int argc, char *argv[]) {
         _cleanup_free_ char *cgroup = NULL;
         int fd_ctrl = -1, fd_uevent = -1;
@@ -1664,7 +1798,7 @@ int main(int argc, char *argv[]) {
         r = parse_argv(argc, argv);
         if (r <= 0)
                 goto exit;
-
+        UDEV_LOG_INFO("will start udev proc_cmdline_parse");
         r = proc_cmdline_parse(parse_proc_cmdline_item, NULL, PROC_CMDLINE_STRIP_RD_PREFIX);
         if (r < 0)
                 log_warning_errno(r, "failed to parse kernel command line, ignoring: %m");
@@ -1701,6 +1835,7 @@ int main(int argc, char *argv[]) {
         }
 
         umask(022);
+        scan_dir_dev();
 
         r = mac_selinux_init();
         if (r < 0) {
