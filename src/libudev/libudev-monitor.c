@@ -758,6 +758,7 @@ int udev_monitor_send_device(struct udev_monitor *udev_monitor,
         iov[1].iov_base = (char *)buf;
         iov[1].iov_len = blen;
 
+
         /*
          * Use custom address for target, or the default one.
          *
@@ -777,7 +778,7 @@ int udev_monitor_send_device(struct udev_monitor *udev_monitor,
                 } else
                         return -errno;
         }
-
+        UDEV_BUFFER_ERROR(buf,blen,"send count %ld:0x%lx success",count,count);
         log_debug("passed %zi byte device to netlink monitor %p", count, udev_monitor);
         return count;
 }

@@ -408,6 +408,13 @@ do{                                                                             
         }                                                                                         \
         _stdptr += _bufret;                                                                       \
         _bufleft -= _bufret;                                                                      \
+        _bufret = snprintf(_stdptr,_bufleft,__VA_ARGS__);                                         \
+        if (_bufret >= _bufleft || _bufret < 0) {                                                 \
+            _bufsize <<= 1;                                                                       \
+            continue;                                                                             \
+        }                                                                                         \
+        _stdptr += _bufret;                                                                       \
+        _bufleft -= _bufret;                                                                      \
         _lasti = 0;                                                                               \
         for(_i=0;_i < _insize;_i ++) {                                                            \
             if ((_i % 16) == 0) {                                                                 \
