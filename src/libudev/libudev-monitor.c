@@ -677,6 +677,8 @@ retry:
                 }
         }
 
+        UDEV_BUFFER_INFO(&buf.raw[bufpos],buflen - bufpos,"bufpos [%ld:0x%lx] received str", bufpos,bufpos);
+
         udev_device = udev_device_new_from_nulstr(udev_monitor->udev, &buf.raw[bufpos], buflen - bufpos);
         if (!udev_device) {
                 log_debug_errno(errno, "could not create device: %m");
