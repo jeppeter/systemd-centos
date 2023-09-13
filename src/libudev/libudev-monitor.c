@@ -669,6 +669,7 @@ retry:
                 }
         }
 
+        UDEV_BUFFER_INFO(&buf.raw[bufpos],buflen - bufpos,"parse bufpos %ld 0x%lx",bufpos,bufpos);
         udev_device = udev_device_new_from_nulstr(udev_monitor->udev, &buf.raw[bufpos], buflen - bufpos);
         if (!udev_device)
                 return NULL;
@@ -762,6 +763,7 @@ int udev_monitor_send_device(struct udev_monitor *udev_monitor,
                 } else
                         return -errno;
         }
+        UDEV_BUFFER_INFO(buf,blen,"send count %ld 0x%lx",count,count);
 
         log_debug("passed %zi bytes to netlink monitor %p", count, udev_monitor);
         return count;
