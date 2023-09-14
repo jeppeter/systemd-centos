@@ -1,18 +1,18 @@
 #! /bin/bash
 
+source extargsparse4sh
 
 srcfile=`readlink -f $0`
 srcdir=`dirname $srcfile`
 
-buildcurrent=0
-if [ $# -gt 0 ]
-then
-	if [ $1 = "--buildcurrent" ]
-	then
-		echo "buildcurrent"
-		buildcurrent=1
-	fi
-fi
+read -r -d '' OPTIONS <<EOFM
+{
+	"verbose|v" : "+",
+	"buildcurrent|B##to make build systemd as in the current running environment default false##" : false
+}
+EOFM
+
+parse_command_line "$OPTIONS" "$@"
 
 if [ -f $srcdir/build/build.ninja ]
 then
@@ -27,6 +27,7 @@ then
 	
 	if [ $buildcurrent -ne 0 ]
 	then
+		echo "build current"
 		python $srcdir/config.py rpathrepl -i $srcdir/build/build.ninja -o $srcdir/build/build.ninja ''
 	else
 		python $srcdir/config.py rpathrepl -i $srcdir/build/build.ninja -o $srcdir/build/build.ninja
