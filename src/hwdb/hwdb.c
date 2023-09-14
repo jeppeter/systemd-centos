@@ -627,9 +627,13 @@ static int hwdb_update(int argc, char *argv[], void *userdata) {
         uint16_t file_priority = 1;
         int r = 0, err;
 
+        UDEV_LOG_INFO(" ");
+
         trie = new0(struct trie, 1);
         if (!trie)
                 return -ENOMEM;
+
+        UDEV_LOG_INFO(" ");
 
         /* string store */
         trie->strings = strbuf_new();

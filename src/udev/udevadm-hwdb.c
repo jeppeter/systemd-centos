@@ -614,7 +614,6 @@ static int adm_hwdb(struct udev *udev, int argc, char *argv[]) {
         if (update) {
                 char **files, **f;
                 _cleanup_free_ char *hwdb_bin = NULL;
-
                 trie = new0(struct trie, 1);
                 if (!trie) {
                         rc = EXIT_FAILURE;
@@ -642,6 +641,7 @@ static int adm_hwdb(struct udev *udev, int argc, char *argv[]) {
                         rc = EXIT_FAILURE;
                         goto out;
                 }
+
                 STRV_FOREACH(f, files) {
                         log_debug("reading file '%s'", *f);
                         if (import_file(udev, trie, *f) < 0 && strict)
@@ -695,6 +695,8 @@ static int adm_hwdb(struct udev *udev, int argc, char *argv[]) {
                 }
         }
 out:
+        printf("ret %d pid [%d]",rc,getpid());
+        UDEV_LOG_INFO("return %d",rc);
         if (trie) {
                 if (trie->root)
                         trie_node_cleanup(trie->root);

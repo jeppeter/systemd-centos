@@ -114,8 +114,17 @@ static int trie_children_cmp_f(const void *v1, const void *v2) {
 static const struct trie_node_f *node_lookup_f(sd_hwdb *hwdb, const struct trie_node_f *node, uint8_t c) {
         struct trie_child_entry_f *child;
         struct trie_child_entry_f search;
+        struct trie_child_entry_f *cur,*base;
+        uint8_t i;
+
+        base = (struct trie_child_entry_f*)((const char *)node + le64toh(hwdb->head->node_size));
+        for(i=0;i<node->children_count;i++) {
+            cur = &(base[i]);
+            UDEV_LOG_INFO("[%d].c 0x%02x [%c] .child_off 0x%lx",i,cur->c,cur->c,cur->child_off);
+        }
 
         search.c = c;
+
         child = bsearch(&search, (const char *)node + le64toh(hwdb->head->node_size), node->children_count,
                         le64toh(hwdb->head->child_entry_size), trie_children_cmp_f);
         if (child)
@@ -246,8 +255,10 @@ static int trie_search_f(sd_hwdb *hwdb, const char *search) {
                         uint8_t c;
 
                         for (; (c = trie_string(hwdb, node->prefix_off)[p]); p++) {
+                                UDEV_LOG_INFO("c [%c]",c);
                                 if (IN_SET(c, '*', '?', '['))
                                         return trie_fnmatch_f(hwdb, node, p, &buf, search + i + p);
+                                UDEV_LOG_INFO("search [%ld+%ld] = %c",i,p,search[i+p]);
                                 if (c != search[i + p])
                                         return 0;
                         }
