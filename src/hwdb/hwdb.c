@@ -779,7 +779,7 @@ int main (int argc, char *argv[]) {
         mac_selinux_init();
 
         r = hwdb_main(argc, argv);
-
+        printf("ret [%d] on pid[%d]\n",r,getpid());
 finish:
         return r < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }

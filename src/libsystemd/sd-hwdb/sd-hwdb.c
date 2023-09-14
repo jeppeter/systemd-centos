@@ -202,6 +202,7 @@ static int trie_fnmatch_f(sd_hwdb *hwdb, const struct trie_node_f *node, size_t 
         const char *prefix;
         int err;
 
+        UDEV_LOG_INFO("node->prefix_off 0x%lx",node->prefix_off);
         prefix = trie_string(hwdb, node->prefix_off);
         len = strlen(prefix + p);
         linebuf_add(buf, prefix + p, len);
@@ -236,10 +237,11 @@ static int trie_search_f(sd_hwdb *hwdb, const char *search) {
         linebuf_init(&buf);
 
         node = trie_node_from_off(hwdb, hwdb->head->nodes_root_off);
+        UDEV_LOG_INFO("offset 0x%lx",hwdb->head->nodes_root_off);
         while (node) {
                 const struct trie_node_f *child;
                 size_t p = 0;
-
+                UDEV_LOG_INFO("prefix_off [0x%lx]", node->prefix_off);
                 if (node->prefix_off) {
                         uint8_t c;
 
@@ -444,7 +446,7 @@ _public_ int sd_hwdb_seek(sd_hwdb *hwdb, const char *modalias) {
         assert_return(hwdb, -EINVAL);
         assert_return(hwdb->f, -EINVAL);
         assert_return(modalias, -EINVAL);
-
+        UDEV_LOG_INFO(" ");
         r = properties_prepare(hwdb, modalias);
         if (r < 0)
                 return r;
@@ -467,11 +469,14 @@ _public_ int sd_hwdb_enumerate(sd_hwdb *hwdb, const char **key, const char **val
                 return -EAGAIN;
 
         ordered_hashmap_iterate(hwdb->properties, &hwdb->properties_iterator, (void **)&entry, &k);
-        if (!k)
+        if (!k){
+            UDEV_LOG_INFO("k null");
                 return 0;
+        }
 
         *key = k;
         *value = trie_string(hwdb, entry->value_off);
+        UDEV_LOG_INFO("key [%s] value [%s]",*key,*value);
 
         return 1;
 }

@@ -105,7 +105,10 @@ def rpathrepl_handler(args,parser):
         replval = args.subnargs[0]
     sarr = read_file_split(buildfile)
     fexpr = re.compile('\\-pie\\s+\'\\-Wl,\\-rpath,[^\']+\'')
-    repv = '-pie \'-Wl,-rpath,%s\''%(replval)
+    if len(replval) == 0:
+        repv = ''
+    else:
+        repv = '-pie \'-Wl,-rpath,%s\''%(replval)
     outs = ''
     lineno = 0
     for l in sarr:
