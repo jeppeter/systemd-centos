@@ -120,7 +120,7 @@ static const struct trie_node_f *node_lookup_f(sd_hwdb *hwdb, const struct trie_
         base = (struct trie_child_entry_f*)((const char *)node + le64toh(hwdb->head->node_size));
         for(i=0;i<node->children_count;i++) {
             cur = &(base[i]);
-            UDEV_LOG_INFO("[%d].c 0x%02x [%c] .child_off 0x%lx",i,cur->c,cur->c,cur->child_off);
+            UDEV_LOG_INFO("[%p][%d].c 0x%02x [%c] .child_off 0x%lx",node,i,cur->c,cur->c,cur->child_off);
         }
 
         search.c = c;
@@ -255,12 +255,14 @@ static int trie_search_f(sd_hwdb *hwdb, const char *search) {
                         uint8_t c;
 
                         for (; (c = trie_string(hwdb, node->prefix_off)[p]); p++) {
-                                UDEV_LOG_INFO("c [%c]",c);
+                                UDEV_LOG_INFO("[%p] p [%ld] c [%c]",node,p,c);
                                 if (IN_SET(c, '*', '?', '['))
                                         return trie_fnmatch_f(hwdb, node, p, &buf, search + i + p);
                                 UDEV_LOG_INFO("search [%ld+%ld] = %c",i,p,search[i+p]);
-                                if (c != search[i + p])
+                                if (c != search[i + p]){
+                                        UDEV_LOG_INFO("[%s]not match [%p]",search,node);
                                         return 0;
+                                }
                         }
                         i += p;
                 }
