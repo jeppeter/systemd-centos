@@ -128,6 +128,7 @@ static int trie_node_add_value(struct trie *trie, struct trie_node *node,
         ssize_t k, v;
         struct trie_value_entry *val;
 
+        UDEV_LOG_INFO("insert [%s]=[%s]",key,value); 
         k = strbuf_add_string(trie->strings, key, strlen(key));
         if (k < 0)
                 return k;
@@ -167,16 +168,17 @@ static int trie_insert(struct trie *trie, struct trie_node *node, const char *se
         size_t i = 0;
         int err = 0;
 
+        UDEV_LOG_INFO("search [%s]",search);
         for (;;) {
                 size_t p;
                 uint8_t c;
                 struct trie_node *child;
-
                 for (p = 0; (c = trie->strings->buf[node->prefix_off + p]); p++) {
                         _cleanup_free_ char *s = NULL;
                         ssize_t off;
                         _cleanup_free_ struct trie_node *new_child = NULL;
 
+                        UDEV_LOG_INFO("[node->prefix_off 0x%lx + p 0x%lx] c 0x%02x [%c] search [i 0x%lx + p 0x%lx] 0x%02x [%c]",node->prefix_off,p,c,c,i,p,search[i+p],search[i+p]);
                         if (c == search[i + p])
                                 continue;
 
@@ -288,6 +290,7 @@ static int64_t trie_store_nodes(struct trie_f *trie, struct trie_node *node) {
                 if (!children)
                         return -ENOMEM;
         }
+        UDEV_LOG_INFO("enter [%p]",node);
 
         /* post-order recursion */
         for (i = 0; i < node->children_count; i++) {
@@ -300,6 +303,7 @@ static int64_t trie_store_nodes(struct trie_f *trie, struct trie_node *node) {
                 }
                 children[i].c = node->children[i].c;
                 children[i].child_off = htole64(child_off);
+                UDEV_LOG_INFO("[%p][%ld].c 0x%02x[%c] .child_off [0x%lx]",node,i,children[i].c,children[i].c,children[i].child_off);
         }
 
         /* write node */
@@ -320,10 +324,12 @@ static int64_t trie_store_nodes(struct trie_f *trie, struct trie_node *node) {
                         .key_off = htole64(trie->strings_off + node->values[i].key_off),
                         .value_off = htole64(trie->strings_off + node->values[i].value_off),
                 };
-
+                UDEV_LOG_INFO("[%p][%ld].key_off [0x%lx] .value_off [0x%lx]",node,i,v.key_off,v.value_off);
                 fwrite(&v, sizeof(struct trie_value_entry_f), 1, trie->f);
                 trie->values_count++;
         }
+
+        UDEV_LOG_INFO("exit [%p] node_off [0x%lx]",node,node_off);
 
         return node_off;
 }

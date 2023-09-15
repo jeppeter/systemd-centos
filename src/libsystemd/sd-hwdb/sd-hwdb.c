@@ -457,7 +457,7 @@ _public_ int sd_hwdb_seek(sd_hwdb *hwdb, const char *modalias) {
         assert_return(hwdb, -EINVAL);
         assert_return(hwdb->f, -EINVAL);
         assert_return(modalias, -EINVAL);
-        UDEV_LOG_INFO(" ");
+        UDEV_LOG_INFO("modalias [%s]",modalias);
         r = properties_prepare(hwdb, modalias);
         if (r < 0)
                 return r;

@@ -102,7 +102,9 @@ read -r -d '' OPTIONS <<EOFM
 	"usr|U" : "/mnt/zdisk/hwdb.bin",
 	"root|R" : "/mnt/zdisk/cc/",
 	"binexe|B" : "$srcdir/build/udevadm",
-	"sopaths|S" : "$srcdir/build/src/shared:$srcdir/build:$srcdir/build/src/udev"
+	"sopaths|S" : "$srcdir/build/src/shared:$srcdir/build:$srcdir/build/src/udev",
+	"test|T" : false
+
 }
 EOFM
 
@@ -131,6 +133,20 @@ export SYSTEMD_LOG_TARGET=console
 fi
 
 cp -f /usr/lib/udev/hwdb.d/* "$root/usr/lib/udev/hwdb.d/"
-Debug "run [$binexe hwdb --update --root \"$root\" --usr \"$usr\"]"
-$binexe hwdb --update --root "$root" --usr "$usr"
+if [ $test -ne 0 ]
+then
+	runstr="$binexe hwdb --test"
+	idx=0
+	Debug "args ${#args[@]}"
+	while [ $idx -lt ${#args[@]} ]
+	do
+		runstr="$runstr ${args[$idx]}"
+		idx=`expr $idx + 1`
+	done
+	Debug "run [$runstr]"
+	$runstr
+else
+	Debug "run [$binexe hwdb --update --root \"$root\" --usr \"$usr\"]"
+	$binexe hwdb --update --root "$root" --usr "$usr"
+fi
 
