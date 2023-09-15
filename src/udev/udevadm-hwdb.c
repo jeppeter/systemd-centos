@@ -359,6 +359,7 @@ static int trie_store(struct trie *trie, const char *filename) {
         if (fseeko(t.f, sizeof(struct trie_header_f), SEEK_SET) < 0)
                 goto error_fclose;
         root_off = trie_store_nodes(&t, trie->root);
+        UDEV_LOG_INFO("root_off 0x%lx", root_off);
         h.nodes_root_off = htole64(root_off);
         pos = ftello(t.f);
         h.nodes_len = htole64(pos - sizeof(struct trie_header_f));
@@ -611,6 +612,8 @@ static int adm_hwdb(struct udev *udev, int argc, char *argv[]) {
                 return EXIT_FAILURE;
         }
 
+        UDEV_LOG_INFO("root [%s]",root);
+
         if (update) {
                 char **files, **f;
                 _cleanup_free_ char *hwdb_bin = NULL;
@@ -640,7 +643,7 @@ static int adm_hwdb(struct udev *udev, int argc, char *argv[]) {
                         log_error_errno(err, "failed to enumerate hwdb files: %m");
                         rc = EXIT_FAILURE;
                         goto out;
-                }
+                }                
 
                 STRV_FOREACH(f, files) {
                         log_debug("reading file '%s'", *f);
